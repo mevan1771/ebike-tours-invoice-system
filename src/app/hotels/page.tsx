@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { fetchData, supabase } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface Hotel {
@@ -13,7 +13,7 @@ interface Hotel {
   double_room_rate: number;
   contact_email?: string;
   contact_phone?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export default function HotelsPage() {
@@ -28,28 +28,29 @@ export default function HotelsPage() {
     contact_phone: '',
   });
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchHotels();
   }, []);
 
   const fetchHotels = async () => {
+    setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('hotels')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const { data, error } = await fetchData('hotels');
+      
       if (error) {
-        console.error('Error fetching hotels:', error);
-        toast.error('Failed to load hotels');
-        return;
+        toast.error('Failed to fetch hotels');
+        throw error;
       }
-
-      setHotels(data || []);
+      
+      if (data) {
+        setHotels(data as Hotel[]);
+      }
     } catch (error) {
-      console.error('Error in fetchHotels:', error);
-      toast.error('Failed to load hotels');
+      console.error('Error fetching hotels:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
