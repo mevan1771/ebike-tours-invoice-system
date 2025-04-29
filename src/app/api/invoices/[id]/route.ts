@@ -3,12 +3,13 @@ import { supabase, fetchData, getMockData } from '@/lib/supabase';
 
 const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 
+// Using the proper Next.js 15.3.1 route handler parameter types
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     
     if (useMockData) {
       const mockInvoices = getMockData('invoices') as any[];
@@ -58,10 +59,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const body = await request.json();
     
     // Validate status if it's being updated
@@ -119,10 +120,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     
     if (useMockData) {
       // For mock data, just return success
@@ -155,4 +156,4 @@ export async function DELETE(
     console.error('Error deleting invoice:', error);
     return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 });
   }
-} 
+}
