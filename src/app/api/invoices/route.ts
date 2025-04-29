@@ -33,7 +33,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { customer_id, items } = body;
+    const { 
+      customer_id, 
+      tour_name, 
+      tour_start_date, 
+      tour_end_date, 
+      group_size, 
+      single_rooms, 
+      double_rooms, 
+      discount_percentage, 
+      additional_requests, 
+      currency, 
+      items 
+    } = body;
 
     if (!customer_id || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Invalid invoice data' }, { status: 400 });
@@ -55,6 +67,10 @@ export async function POST(request: Request) {
     const totalAmount = items.reduce((sum: number, item: any) => 
       sum + (item.quantity * item.unit_price), 0);
 
+    // Apply discount if provided
+    const discountAmount = discount_percentage ? (totalAmount * (discount_percentage / 100)) : 0;
+    const finalAmount = totalAmount - discountAmount;
+
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -62,7 +78,16 @@ export async function POST(request: Request) {
         invoice_number: invoiceNumber,
         customer_id,
         status: 'PENDING',
-        total_amount: totalAmount
+        total_amount: finalAmount,
+        tour_name,
+        tour_start_date,
+        tour_end_date,
+        group_size,
+        single_rooms,
+        double_rooms,
+        discount_percentage,
+        additional_requests,
+        currency
       }])
       .select()
       .single();
@@ -73,6 +98,7 @@ export async function POST(request: Request) {
     const invoiceItems = items.map((item: any) => ({
       invoice_id: invoice.id,
       product_id: item.product_id,
+      description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
       total_price: item.quantity * item.unit_price
@@ -89,12 +115,14 @@ export async function POST(request: Request) {
       .from('invoices')
       .select(`
         *,
-        customer:customers(name),
+        customer:customers(name, email, phone),
         invoice_items(
+          id,
+          product_id,
+          description,
           quantity,
           unit_price,
-          total_price,
-          product:products(name)
+          total_price
         )
       `)
       .eq('id', invoice.id)

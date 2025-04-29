@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 // Currency conversion rates (as of a recent date)
 const CURRENCY_RATES = {
@@ -32,6 +33,8 @@ const mockTourData = {
     singleRooms: 2,
     doubleRooms: 1,
     tourLeaderName: 'John Smith',
+    tourLeaderEmail: 'john.smith@example.com',
+    tourLeaderPhone: '+1-555-123-4567',
     tourLeaderDiscount: 10,
     additionalRequests: 'Extra water bottles for all riders'
   },
@@ -54,6 +57,8 @@ const mockTourData = {
     equipmentRental: 30,
     
     insurancePerPerson: 15,
+    travelInsurance: 25,
+    equipmentInsurance: 15,
     
     extraServices: [
       { name: 'Airport Transfer', rate: 50, selected: true },
@@ -158,7 +163,10 @@ export default function PreviewPage() {
   };
   
   const calculateInsuranceTotal = () => {
-    return tourData.rates.insurancePerPerson * tourData.rates.numberOfBikes;
+    // Calculate both travel insurance and equipment insurance
+    const travelInsuranceCost = tourData.rates.travelInsurance * tourData.groupInfo.numberOfRiders;
+    const equipmentInsuranceCost = tourData.rates.equipmentInsurance * tourData.rates.numberOfBikes;
+    return travelInsuranceCost + equipmentInsuranceCost;
   };
   
   const calculateExtrasTotal = () => {
@@ -186,10 +194,148 @@ export default function PreviewPage() {
     return calculateSubtotal() - calculateDiscount();
   };
   
-  const handleSubmit = () => {
-    // In a real app, this would save the invoice to the database
-    console.log('Finalizing invoice:', tourData);
-    router.push('/invoices');
+  const handleSubmit = async () => {
+    try {
+      toast.loading('Saving invoice...');
+      
+      // First create or get the customer
+      const customerResponse = await fetch('/api/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: tourData.groupInfo.tourLeaderName,
+          email: tourData.groupInfo.tourLeaderEmail,
+          phone: tourData.groupInfo.tourLeaderPhone
+        }),
+      });
+      
+      if (!customerResponse.ok) {
+        throw new Error('Failed to create customer');
+      }
+      
+      const customer = await customerResponse.json();
+      
+      // Prepare invoice items
+      const items = [];
+      
+      // Add accommodation
+      tourData.accommodation.forEach(day => {
+        items.push({
+          product_id: 'accommodation',
+          description: `${day.hotel.name} - ${formatDate(day.date)}`,
+          quantity: 1,
+          unit_price: (day.hotel.single_room_rate * tourData.groupInfo.singleRooms) +
+                      (day.hotel.double_room_rate * tourData.groupInfo.doubleRooms)
+        });
+      });
+      
+      // Add bike rental
+      items.push({
+        product_id: 'bikes',
+        description: `E-Bike Rental (${tourData.rates.numberOfBikes} bikes for ${tourData.rates.numberOfDays} days)`,
+        quantity: tourData.rates.numberOfBikes,
+        unit_price: tourData.rates.bikeRentalDaily * tourData.rates.numberOfDays
+      });
+      
+      // Add transport
+      items.push({
+        product_id: 'transport',
+        description: `Transport: ${tourData.rates.selectedTransport.name} (${tourData.rates.transportDays} days)`,
+        quantity: 1,
+        unit_price: tourData.rates.selectedTransport.rate_per_day * tourData.rates.transportDays
+      });
+      
+      // Add guide services if selected
+      if (tourData.rates.tourGuideRate > 0) {
+        items.push({
+          product_id: 'services',
+          description: 'Tour Guide Service',
+          quantity: 1,
+          unit_price: tourData.rates.tourGuideRate
+        });
+      }
+      
+      // Add support vehicle if selected
+      if (tourData.rates.supportVehicle > 0) {
+        items.push({
+          product_id: 'services',
+          description: 'Support Vehicle',
+          quantity: 1,
+          unit_price: tourData.rates.supportVehicle
+        });
+      }
+      
+      // Add insurance if selected
+      if (tourData.rates.travelInsurance > 0) {
+        items.push({
+          product_id: 'insurance',
+          description: 'Travel Insurance',
+          quantity: tourData.groupInfo.numberOfRiders,
+          unit_price: tourData.rates.travelInsurance
+        });
+      }
+      
+      // Add equipment insurance if selected
+      if (tourData.rates.equipmentInsurance > 0) {
+        items.push({
+          product_id: 'insurance',
+          description: 'Equipment Insurance',
+          quantity: tourData.rates.numberOfBikes,
+          unit_price: tourData.rates.equipmentInsurance
+        });
+      }
+      
+      // Add extra services
+      tourData.rates.extraServices.forEach(service => {
+        if (service.selected) {
+          items.push({
+            product_id: 'extras',
+            description: service.name,
+            quantity: 1,
+            unit_price: service.rate
+          });
+        }
+      });
+      
+      // Create the invoice
+      const invoiceResponse = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_id: customer.id,
+          tour_name: tourData.tourName,
+          tour_start_date: tourData.startDate,
+          tour_end_date: tourData.endDate,
+          group_size: tourData.groupInfo.numberOfRiders,
+          single_rooms: tourData.groupInfo.singleRooms,
+          double_rooms: tourData.groupInfo.doubleRooms,
+          discount_percentage: tourData.groupInfo.tourLeaderDiscount,
+          additional_requests: tourData.groupInfo.additionalRequests,
+          currency: selectedCurrency,
+          items: items
+        }),
+      });
+      
+      if (!invoiceResponse.ok) {
+        throw new Error('Failed to create invoice');
+      }
+      
+      const invoice = await invoiceResponse.json();
+      
+      toast.dismiss();
+      toast.success('Invoice created successfully!');
+      
+      // Redirect to the invoices page
+      router.push('/invoices');
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      toast.dismiss();
+      toast.error('Failed to create invoice. Please try again.');
+    }
   };
   
   const printInvoice = () => {

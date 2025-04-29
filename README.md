@@ -1,121 +1,108 @@
 # E-Bike Tours Invoice System
 
-A comprehensive web application for managing e-bike tour invoices, hotel accommodations, and transport options.
-
-![E-Bike Tours Invoice System](public/images/logo.jpg)
+A comprehensive invoice management system designed specifically for e-bike tour operators. Streamline your tour booking process, manage customer information, handle pricing, and generate professional invoices all in one place.
 
 ## Features
 
-- **Invoice Management**: Create, view, and manage customer invoices
-- **Hotel Management**: Add and manage hotel accommodations for tours
-- **Transport Management**: Add and manage transport options for tours
-- **Rate Calculator**: Calculate total tour costs including bike rentals, accommodations, and extras
-- **Tour Information**: Manage tour details and rider information
-- **Multi-currency Support**: Switch between USD, EUR, GBP, and LKR
+- **Tour Management**: Create and manage tours with detailed information
+- **Customer Management**: Store and retrieve customer details
+- **Dynamic Pricing**: Configure accommodation, bike rental, transport, and additional services
+- **Invoice Generation**: Create professional invoices with detailed breakdowns
+- **Invoice Tracking**: Track invoice status (pending, paid, cancelled)
+- **Hotel Management**: Manage your network of partner hotels
+- **Transport Management**: Organize different transport options
+- **Custom Settings**: Configure company details, currency, and invoice templates
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL)
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: Supabase (PostgreSQL)
 - **Authentication**: Supabase Auth
-- **Deployment**: Vercel
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- Supabase account and project
+- Node.js 16+ 
+- npm or yarn
+- Supabase account
 
-### Local Development
+### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/mevan1771/ebike-tours-invoice-system.git
-   cd ebike-tours-invoice-system
+   git clone https://github.com/yourusername/ebike-inv-system.git
+   cd ebike-inv-system
    ```
 
 2. Install dependencies:
    ```bash
    npm install
+   # or
+   yarn install
    ```
 
 3. Set up environment variables:
-   Create a `.env.local` file with the following variables:
+   - Create a `.env.local` file in the root directory
+   - Add the following variables:
    ```
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
-4. Create the database schema:
-   - Copy the contents of `schema.sql`
-   - Execute the SQL in the Supabase SQL Editor
+4. Initialize the database:
+   - Run the SQL commands in `schema.sql` in your Supabase SQL editor
 
 5. Run the development server:
    ```bash
    npm run dev
+   # or
+   yarn dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Deploying to Vercel
+## Usage
 
-### Step 1: Connect your GitHub Repository
+### Creating a Tour Invoice
 
-1. Sign up/Log in to [Vercel](https://vercel.com/)
-2. Click "New Project"
-3. Import your GitHub repository (ebike-tours-invoice-system)
-4. Vercel will automatically detect that it's a Next.js project
+1. Go to "New Tour" in the sidebar
+2. Enter tour details (name, dates, invoice number)
+3. Add rider/group information
+4. Configure rates and pricing (accommodation, bike rentals, transport, services)
+5. Preview the invoice
+6. Finalize to save the invoice
 
-### Step 2: Configure Environment Variables
+### Managing Invoices
 
-Add the following environment variables in the Vercel project settings:
+- View all invoices on the "All Invoices" page
+- Track payment status and update invoice status
+- Print or download invoices
 
-- `NEXT_PUBLIC_SUPABASE_URL` = Your Supabase URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = Your Supabase anonymous key
+### Configuring Settings
 
-### Step 3: Deploy
-
-1. Click "Deploy"
-2. Vercel will build and deploy your application
-3. Once deployed, Vercel will provide you with a production URL
-
-### Step 4: Connect Custom Domain (Optional)
-
-1. In your Vercel project, go to "Settings" > "Domains"
-2. Add your custom domain and follow the verification steps
-
-## Database Setup
-
-The application uses Supabase as the database. The schema includes tables for:
-
-- `users` - Staff/admin accounts
-- `customers` - Customer information
-- `products` - E-bike details
-- `invoices` - Invoice records
-- `invoice_items` - Line items for invoices
-- `hotels` - Hotel accommodation options
-- `transport` - Transport options
-
-Run the `schema.sql` file in your Supabase SQL Editor to set up the database schema and Row Level Security policies.
+- Update company information
+- Set default currency
+- Configure VAT/tax settings
 
 ## Project Structure
 
-- `/src/app` - Next.js application routes and pages
-- `/src/components` - Reusable React components
-- `/src/lib` - Utilities and library configurations
-- `/prisma` - Database schema and client
-- `/public` - Static assets
-- `/schema.sql` - Database schema for Supabase
+- `/src/app` - Main application components and pages
+- `/src/app/api` - API routes for data handling
+- `/src/components` - Reusable UI components
+- `/schema.sql` - Database schema definition
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- [Next.js](https://nextjs.org/)
+- [Supabase](https://supabase.io/)
+- [Tailwind CSS](https://tailwindcss.com/)
