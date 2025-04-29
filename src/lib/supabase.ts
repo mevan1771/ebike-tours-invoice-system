@@ -6,8 +6,13 @@ const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-url.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-// Create a Supabase client
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Create a Supabase client with no auth persistence to avoid issues during build
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  }
+});
 
 // Mock Supabase client for build/testing
 export const getMockData = (table: string) => {

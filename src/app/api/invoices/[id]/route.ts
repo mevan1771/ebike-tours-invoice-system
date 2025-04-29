@@ -1,9 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase, fetchData, getMockData } from '@/lib/supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 
 export async function GET(
   request: NextRequest,
@@ -11,6 +9,21 @@ export async function GET(
 ) {
   try {
     const { id } = context.params;
+    
+    if (useMockData) {
+      const mockInvoices = getMockData('invoices') as any[];
+      const invoice = mockInvoices.find(inv => inv.id === id);
+      
+      if (!invoice) {
+        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      }
+      
+      // Add mock customer and invoice items
+      invoice.customer = getMockData('customers').find((c: any) => c.id === invoice.customer_id);
+      invoice.invoice_items = getMockData('invoice_items').filter((item: any) => item.invoice_id === id);
+      
+      return NextResponse.json(invoice);
+    }
     
     const { data, error } = await supabase
       .from('invoices')
@@ -56,7 +69,22 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
     }
 
-    // Update the invoice
+    if (useMockData) {
+      // For mock data, just return success with the mock data
+      const mockInvoices = getMockData('invoices') as any[];
+      const invoice = mockInvoices.find(inv => inv.id === id);
+      
+      if (!invoice) {
+        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      }
+      
+      // Simulate updated invoice
+      const updatedInvoice = { ...invoice, ...body };
+      
+      return NextResponse.json(updatedInvoice);
+    }
+    
+    // Update the invoice in Supabase
     const { data, error } = await supabase
       .from('invoices')
       .update(body)
@@ -95,6 +123,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = context.params;
+    
+    if (useMockData) {
+      // For mock data, just return success
+      return NextResponse.json({ message: 'Invoice deleted successfully' });
+    }
     
     // First, delete all related invoice items
     const { error: itemsError } = await supabase
