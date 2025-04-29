@@ -156,7 +156,7 @@ export default function RatesPage() {
 
   const generateTourDates = (startDate: Date, endDate: Date) => {
     const dates: string[] = [];
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
       dates.push(currentDate.toISOString().split('T')[0]);
