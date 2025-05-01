@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, fetchData, getMockData } from '@/lib/supabase';
-
-const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+import { supabase } from '@/lib/supabase';
+import { mockAPI } from '@/lib/mockData';
 
 // Using the proper Next.js 15.3.1 route handler parameter types
 export async function GET(
@@ -11,46 +10,30 @@ export async function GET(
   try {
     const { id } = params;
     
-    if (useMockData) {
-      const mockInvoices = getMockData('invoices') as any[];
-      const invoice = mockInvoices.find(inv => inv.id === id);
-      
-      if (!invoice) {
-        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-      }
-      
-      // Add mock customer and invoice items
-      invoice.customer = getMockData('customers').find((c: any) => c.id === invoice.customer_id);
-      invoice.invoice_items = getMockData('invoice_items').filter((item: any) => item.invoice_id === id);
-      
-      return NextResponse.json(invoice);
+    // Always use mockAPI for Vercel deployment
+    const invoice = await mockAPI.getInvoiceById(id);
+    
+    if (!invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
     
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        customer:customers(name, email, phone),
-        invoice_items(
-          id,
-          product_id,
-          description,
-          quantity,
-          unit_price,
-          total_price
-        )
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-      }
-      throw error;
+    // Add customer info
+    const customer = await mockAPI.getCustomerById(invoice.customer_id);
+    if (customer) {
+      invoice.customer = { 
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone
+      };
     }
-
-    return NextResponse.json(data);
+    
+    // Add invoice items
+    const items = await mockAPI.getInvoiceItemsByInvoiceId(id);
+    if (items) {
+      invoice.invoice_items = items;
+    }
+    
+    return NextResponse.json(invoice);
   } catch (error) {
     console.error('Error fetching invoice:', error);
     return NextResponse.json({ error: 'Failed to fetch invoice' }, { status: 500 });
@@ -70,48 +53,30 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
     }
 
-    if (useMockData) {
-      // For mock data, just return success with the mock data
-      const mockInvoices = getMockData('invoices') as any[];
-      const invoice = mockInvoices.find(inv => inv.id === id);
-      
-      if (!invoice) {
-        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-      }
-      
-      // Simulate updated invoice
-      const updatedInvoice = { ...invoice, ...body };
-      
-      return NextResponse.json(updatedInvoice);
+    // Update the invoice using mockAPI
+    const updatedInvoice = await mockAPI.updateInvoice(id, body);
+    
+    if (!updatedInvoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
     
-    // Update the invoice in Supabase
-    const { data, error } = await supabase
-      .from('invoices')
-      .update(body)
-      .eq('id', id)
-      .select(`
-        *,
-        customer:customers(name, email, phone),
-        invoice_items(
-          id,
-          product_id,
-          description,
-          quantity,
-          unit_price,
-          total_price
-        )
-      `)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-      }
-      throw error;
+    // Add customer info
+    const customer = await mockAPI.getCustomerById(updatedInvoice.customer_id);
+    if (customer) {
+      updatedInvoice.customer = { 
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone
+      };
     }
-
-    return NextResponse.json(data);
+    
+    // Add invoice items
+    const items = await mockAPI.getInvoiceItemsByInvoiceId(id);
+    if (items) {
+      updatedInvoice.invoice_items = items;
+    }
+    
+    return NextResponse.json(updatedInvoice);
   } catch (error) {
     console.error('Error updating invoice:', error);
     return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
@@ -125,32 +90,23 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    if (useMockData) {
-      // For mock data, just return success
-      return NextResponse.json({ message: 'Invoice deleted successfully' });
+    // Check if invoice exists
+    const invoice = await mockAPI.getInvoiceById(id);
+    if (!invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
     
-    // First, delete all related invoice items
-    const { error: itemsError } = await supabase
-      .from('invoice_items')
-      .delete()
-      .eq('invoice_id', id);
-
-    if (itemsError) throw itemsError;
-    
-    // Then, delete the invoice
-    const { error: invoiceError } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', id);
-
-    if (invoiceError) {
-      if (invoiceError.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    // Delete invoice items first
+    const items = await mockAPI.getInvoiceItemsByInvoiceId(id);
+    if (items && items.length > 0) {
+      for (const item of items) {
+        await mockAPI.deleteInvoiceItem(item.id);
       }
-      throw invoiceError;
     }
-
+    
+    // Delete the invoice
+    await mockAPI.deleteInvoice(id);
+    
     return NextResponse.json({ message: 'Invoice deleted successfully' });
   } catch (error) {
     console.error('Error deleting invoice:', error);
