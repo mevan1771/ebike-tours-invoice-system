@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase, fetchData } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
+import { mockAPI } from '@/lib/mockData';
 
 export async function GET() {
   try {
-    const { data, error } = await fetchData('hotels');
-    
-    if (error) {
-      throw error;
-    }
-    
+    const data = await mockAPI.getHotels();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching hotels:', error);
@@ -16,31 +11,31 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
+    const body = await req.json();
     
-    // Basic validation
-    if (!body.name || !body.location) {
+    // Validate required fields
+    if (!body.name || !body.location || body.stars === undefined) {
       return NextResponse.json(
-        { error: 'Name and location are required' },
+        { error: 'Name, location, and stars are required' }, 
         { status: 400 }
       );
     }
-    
-    const { data, error } = await supabase
-      .from('hotels')
-      .insert([body])
-      .select()
-      .single();
-    
-    if (error) {
-      throw error;
-    }
-    
-    return NextResponse.json(data, { status: 201 });
+
+    const newHotel = await mockAPI.createHotel({
+      name: body.name,
+      location: body.location,
+      stars: body.stars,
+      single_room_rate: body.single_room_rate || 0,
+      double_room_rate: body.double_room_rate || 0,
+      contact_email: body.contact_email || null,
+      contact_phone: body.contact_phone || null
+    });
+
+    return NextResponse.json(newHotel, { status: 201 });
   } catch (error) {
     console.error('Error creating hotel:', error);
     return NextResponse.json({ error: 'Failed to create hotel' }, { status: 500 });
   }
-} 
+}
