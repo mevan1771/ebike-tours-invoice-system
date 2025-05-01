@@ -1,251 +1,260 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
-
-interface Transport {
-  id: string;
-  name: string;
-  type: string;
-  capacity: number;
-  rate_per_day: number;
-  description: string;
-}
+import { Transport } from '@/lib/mockData';
 
 export default function TransportPage() {
   const [transports, setTransports] = useState<Transport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
-    type: '',
-    capacity: '',
-    rate_per_day: '',
+    type: 'van',
+    capacity: 1,
+    rate_per_day: 0,
     description: ''
   });
 
   useEffect(() => {
-    console.log('TransportPage component mounted');
     fetchTransports();
   }, []);
 
   async function fetchTransports() {
-    console.log('Fetching transports...');
+    setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('transport')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      console.log('Supabase response:', { data, error });
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      const response = await fetch('/api/transport');
+      if (!response.ok) {
+        throw new Error('Failed to fetch transports');
       }
-      
-      setTransports(data || []);
-      console.log('Transports loaded:', data);
+      const data = await response.json();
+      setTransports(data);
     } catch (error) {
-      console.error('Error fetching transport:', error);
+      console.error('Error fetching transports:', error);
       toast.error('Failed to load transport options');
     } finally {
       setIsLoading(false);
-      console.log('Loading state set to false');
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
     try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('transport')
-        .insert([{
-          name: formData.name,
-          type: formData.type,
-          capacity: parseInt(formData.capacity),
-          rate_per_day: parseFloat(formData.rate_per_day),
-          description: formData.description
-        }])
-        .select();
+      const response = await fetch('/api/transport', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add transport option');
       }
 
       toast.success('Transport option added successfully');
       setFormData({
         name: '',
-        type: '',
-        capacity: '',
-        rate_per_day: '',
+        type: 'van',
+        capacity: 1,
+        rate_per_day: 0,
         description: ''
       });
-      
-      // Refresh the transport list
       fetchTransports();
     } catch (error) {
       console.error('Error adding transport:', error);
-      toast.error('Failed to add transport option');
-    } finally {
-      setIsLoading(false);
+      toast.error(error instanceof Error ? error.message : 'Failed to add transport option');
     }
   }
 
   async function handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this transport option?')) {
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('transport')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/transport?id=${id}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to delete transport option');
+      }
 
-      setTransports(transports.filter(t => t.id !== id));
       toast.success('Transport option deleted successfully');
+      fetchTransports();
     } catch (error) {
       console.error('Error deleting transport:', error);
       toast.error('Failed to delete transport option');
     }
   }
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target as HTMLInputElement;
+    setFormData({
+      ...formData,
+      [name]: type === 'number' ? parseFloat(value) || 0 : value,
+    });
+  };
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Transport Management</h1>
-          <p className="text-gray-600">Add and manage transport options for tours</p>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-yellow-100 p-4 mb-6 rounded-md border border-yellow-300">
+        <p className="font-medium text-yellow-800">
+          ⚠️ Using mock data: Information will persist during your session but will reset on page refresh.
+        </p>
       </div>
+      
+      <h1 className="text-2xl font-bold mb-6">Transport Management</h1>
 
-      {/* Add Transport Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg border p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-6">Add New Transport</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Toyota Hiace"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type
-            </label>
-            <select
-              required
-              value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value})}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select type</option>
-              <option value="Van">Van</option>
-              <option value="Bus">Bus</option>
-              <option value="Car">Car</option>
-              <option value="SUV">SUV</option>
-              <option value="Minibus">Minibus</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Capacity (persons)
-            </label>
-            <input
-              type="number"
-              required
-              min="1"
-              value={formData.capacity}
-              onChange={(e) => setFormData({...formData, capacity: e.target.value})}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Rate per Day
-            </label>
-            <input
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              value={formData.rate_per_day}
-              onChange={(e) => setFormData({...formData, rate_per_day: e.target.value})}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              rows={3}
-              placeholder="Enter vehicle description, features, etc."
-            />
-          </div>
+      {isLoading ? (
+        <div className="flex justify-center my-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
         </div>
-        <div className="mt-6">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Add Transport
-          </button>
-        </div>
-      </form>
-
-      {/* Transport List */}
-      <div className="bg-white rounded-lg border">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Available Transport Options</h2>
-          <div className="space-y-4">
-            {transports.map(transport => (
-              <div
-                key={transport.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-              >
+      ) : (
+        <>
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">Add New Transport Option</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-medium text-gray-800">{transport.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    {transport.type} • Capacity: {transport.capacity} persons • 
-                    Rate: €{transport.rate_per_day}/day
-                  </p>
-                  {transport.description && (
-                    <p className="text-sm text-gray-500 mt-1">{transport.description}</p>
-                  )}
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g., Executive Van"
+                  />
                 </div>
+
+                <div>
+                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+                    Type
+                  </label>
+                  <select
+                    id="type"
+                    name="type"
+                    value={formData.type}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="van">Van</option>
+                    <option value="bus">Bus</option>
+                    <option value="car">Car</option>
+                    <option value="boat">Boat</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+                    Capacity (people)
+                  </label>
+                  <input
+                    type="number"
+                    id="capacity"
+                    name="capacity"
+                    value={formData.capacity}
+                    onChange={handleChange}
+                    min="1"
+                    required
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="rate_per_day" className="block text-sm font-medium text-gray-700 mb-1">
+                    Rate Per Day ($)
+                  </label>
+                  <input
+                    type="number"
+                    id="rate_per_day"
+                    name="rate_per_day"
+                    value={formData.rate_per_day}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    required
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Optional description of the vehicle"
+                />
+              </div>
+
+              <div>
                 <button
-                  onClick={() => handleDelete(transport.id)}
-                  className="text-red-600 hover:text-red-800 transition-colors"
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  Add Transport Option
                 </button>
               </div>
-            ))}
-            {transports.length === 0 && (
-              <p className="text-center text-gray-500 py-4">No transport options available</p>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Available Transport Options</h2>
+            {transports.length === 0 ? (
+              <p className="text-gray-500">No transport options available.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate/Day</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {transports.map((transport) => (
+                      <tr key={transport.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">{transport.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap capitalize">{transport.type}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{transport.capacity}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">${transport.rate_per_day.toFixed(2)}</td>
+                        <td className="px-6 py-4">{transport.description || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => handleDelete(transport.id)}
+                            className="text-red-600 hover:text-red-900 font-medium"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-        </div>
-      </div>
-    </main>
+        </>
+      )}
+    </div>
   );
-} 
+}
