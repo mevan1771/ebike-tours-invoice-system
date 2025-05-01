@@ -76,6 +76,20 @@ The easiest way to deploy the application is through Vercel:
 4. No environment variables are required for initial deployment as the app uses mock data
 5. Click "Deploy"
 
+### Troubleshooting Vercel Deployment
+
+If you encounter issues with Vercel deployment:
+
+1. Make sure you're using the latest commit from the main branch
+2. Add the following environment variable in your Vercel project settings:
+   - `NEXT_PUBLIC_USE_MOCK_DATA=true`
+3. Check that TypeScript errors are being ignored by ensuring the `next.config.js` has:
+   ```js
+   typescript: {
+     ignoreBuildErrors: true,
+   },
+   ```
+
 ### Data Storage
 
 The application currently uses mock data that persists during the user session but resets on page refresh. This approach allows for easy deployment without database setup.
