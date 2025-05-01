@@ -101,6 +101,10 @@ npm run dev
 yarn dev
 ```
 
+## Testing
+
+To verify the mock data system is working correctly, visit the `/test` page after deployment.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
