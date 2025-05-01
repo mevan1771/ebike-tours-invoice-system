@@ -1,39 +1,42 @@
 # E-Bike Tours Invoice System
 
-A comprehensive invoice management system designed specifically for e-bike tour operators. Streamline your tour booking process, manage customer information, handle pricing, and generate professional invoices all in one place.
+A comprehensive management system for e-bike tour companies to handle tour bookings, customer tracking, hotel accommodation, transport options, rate calculations, and invoice generation.
 
 ## Features
 
-- **Tour Management**: Create and manage tours with detailed information
-- **Customer Management**: Store and retrieve customer details
-- **Dynamic Pricing**: Configure accommodation, bike rental, transport, and additional services
-- **Invoice Generation**: Create professional invoices with detailed breakdowns
-- **Invoice Tracking**: Track invoice status (pending, paid, cancelled)
-- **Hotel Management**: Manage your network of partner hotels
-- **Transport Management**: Organize different transport options
-- **Custom Settings**: Configure company details, currency, and invoice templates
+- **Tour Management**: Create and manage e-bike tours with flexible date ranges
+- **Customer Tracking**: Maintain a database of customers and their information
+- **Hotel Management**: Store hotel details including rates, location, and star ratings
+- **Transport Options**: Manage various transport modes for tour logistics
+- **Rate Calculation**: Auto-calculate tour rates based on accommodations, transport, and equipment
+- **Invoice Generation**: Create professional invoices for tours
+
+## Demo
+
+Check out the live demo of the application [here](https://ebike-tours-invoice-system.vercel.app/) (available after deployment).
 
 ## Tech Stack
 
-- **Frontend**: Next.js, React, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
+- **Frontend Framework**: Next.js 15 with App Router
+- **UI Library**: React 18
+- **Programming Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: Mock data (ready for Supabase integration)
+- **Deployment**: Vercel
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 16+ 
+- Node.js 18.0 or later
 - npm or yarn
-- Supabase account
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ebike-inv-system.git
-   cd ebike-inv-system
+   git clone https://github.com/mevan1771/ebike-tours-invoice-system.git
+   cd ebike-tours-invoice-system
    ```
 
 2. Install dependencies:
@@ -43,55 +46,60 @@ A comprehensive invoice management system designed specifically for e-bike tour 
    yarn install
    ```
 
-3. Set up environment variables:
-   - Create a `.env.local` file in the root directory
-   - Add the following variables:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. Initialize the database:
-   - Run the SQL commands in `schema.sql` in your Supabase SQL editor
-
-5. Run the development server:
+3. Run the development server:
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Usage
-
-### Creating a Tour Invoice
-
-1. Go to "New Tour" in the sidebar
-2. Enter tour details (name, dates, invoice number)
-3. Add rider/group information
-4. Configure rates and pricing (accommodation, bike rentals, transport, services)
-5. Preview the invoice
-6. Finalize to save the invoice
-
-### Managing Invoices
-
-- View all invoices on the "All Invoices" page
-- Track payment status and update invoice status
-- Print or download invoices
-
-### Configuring Settings
-
-- Update company information
-- Set default currency
-- Configure VAT/tax settings
+4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
 ## Project Structure
 
-- `/src/app` - Main application components and pages
-- `/src/app/api` - API routes for data handling
-- `/src/components` - Reusable UI components
-- `/schema.sql` - Database schema definition
+- `/public`: Static assets like images and icons
+- `/src`: Source code
+  - `/app`: Next.js 15 App Router files and API routes
+  - `/components`: Reusable React components
+  - `/lib`: Utility functions and shared code
+  - `/styles`: Global CSS styles
+
+## Deployment
+
+### Deploying to Vercel
+
+The easiest way to deploy the application is through Vercel:
+
+1. Fork this repository to your GitHub account
+2. Create a new project on [Vercel](https://vercel.com)
+3. Import your GitHub repository
+4. No environment variables are required for initial deployment as the app uses mock data
+5. Click "Deploy"
+
+### Data Storage
+
+The application currently uses mock data that persists during the user session but resets on page refresh. This approach allows for easy deployment without database setup.
+
+#### Future Database Setup
+
+To connect the application to a real database (Supabase):
+
+1. Create a Supabase account and project
+2. Execute the SQL commands from `schema.sql` to set up your tables
+3. Update the `src/lib/supabase.ts` file to use your Supabase credentials
+4. Configure environment variables in your Vercel project:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+## Local Development
+
+To start the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+```
 
 ## Contributing
 
@@ -100,9 +108,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- [Next.js](https://nextjs.org/)
-- [Supabase](https://supabase.io/)
-- [Tailwind CSS](https://tailwindcss.com/)
