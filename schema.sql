@@ -42,15 +42,6 @@ CREATE TABLE invoices (
     customer_id UUID NOT NULL REFERENCES customers(id),
     status invoice_status NOT NULL DEFAULT 'PENDING',
     total_amount DECIMAL(10,2) NOT NULL,
-    tour_name TEXT,
-    tour_start_date DATE,
-    tour_end_date DATE,
-    group_size INTEGER,
-    single_rooms INTEGER,
-    double_rooms INTEGER,
-    discount_percentage DECIMAL(5,2),
-    additional_requests TEXT,
-    currency VARCHAR(3) DEFAULT 'EUR',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -59,8 +50,7 @@ CREATE TABLE invoices (
 CREATE TABLE invoice_items (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     invoice_id UUID NOT NULL REFERENCES invoices(id),
-    product_id TEXT NOT NULL, -- Changed from UUID to TEXT to support generic product types
-    description TEXT NOT NULL,
+    product_id UUID NOT NULL REFERENCES products(id),
     quantity INTEGER NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
     total_price DECIMAL(10,2) NOT NULL,

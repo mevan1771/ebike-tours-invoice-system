@@ -1,136 +1,50 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { mockAPI } from '@/lib/mockData';
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        customer:customers(name),
-        invoice_items(
-          quantity,
-          unit_price,
-          total_price,
-          product:products(name)
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return NextResponse.json(data || []);
+    const data = await mockAPI.getInvoices();
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching invoices:', error);
     return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { 
-      customer_id, 
-      tour_name, 
-      tour_start_date, 
-      tour_end_date, 
-      group_size, 
-      single_rooms, 
-      double_rooms, 
-      discount_percentage, 
-      additional_requests, 
-      currency, 
-      items 
-    } = body;
-
-    if (!customer_id || !items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'Invalid invoice data' }, { status: 400 });
+    const body = await req.json();
+    
+    // Validate required fields
+    if (!body.invoice_number || !body.customer_id || body.total_amount === undefined) {
+      return NextResponse.json(
+        { error: 'Invoice number, customer ID and total amount are required' }, 
+        { status: 400 }
+      );
     }
 
-    // Generate invoice number (format: INV-YYYY-XXX)
-    const year = new Date().getFullYear();
-    const result = await supabase
-      .from('invoices')
-      .select('*', { count: 'exact' })
-      .gte('created_at', `${year}-01-01`)
-      .lte('created_at', `${year}-12-31`)
-      .single();
+    // Create the invoice
+    const newInvoice = await mockAPI.createInvoice({
+      invoice_number: body.invoice_number,
+      customer_id: body.customer_id,
+      status: body.status || 'PENDING',
+      total_amount: typeof body.total_amount === 'string' ? parseFloat(body.total_amount) : body.total_amount,
+    });
 
-    const count = result?.count ?? 0;
-    const invoiceNumber = `INV-${year}-${String(count + 1).padStart(3, '0')}`;
-    
-    // Calculate total amount
-    const totalAmount = items.reduce((sum: number, item: any) => 
-      sum + (item.quantity * item.unit_price), 0);
+    // Add invoice items if provided
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      for (const item of body.items) {
+        await mockAPI.createInvoiceItem({
+          invoice_id: newInvoice.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price
+        });
+      }
+    }
 
-    // Apply discount if provided
-    const discountAmount = discount_percentage ? (totalAmount * (discount_percentage / 100)) : 0;
-    const finalAmount = totalAmount - discountAmount;
-
-    // Create invoice
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .insert([{
-        invoice_number: invoiceNumber,
-        customer_id,
-        status: 'PENDING',
-        total_amount: finalAmount,
-        tour_name,
-        tour_start_date,
-        tour_end_date,
-        group_size,
-        single_rooms,
-        double_rooms,
-        discount_percentage,
-        additional_requests,
-        currency
-      }])
-      .select()
-      .single();
-
-    if (invoiceError) throw invoiceError;
-
-    // Create invoice items
-    const invoiceItems = items.map((item: any) => ({
-      invoice_id: invoice.id,
-      product_id: item.product_id,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.quantity * item.unit_price
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('invoice_items')
-      .insert(invoiceItems);
-
-    if (itemsError) throw itemsError;
-
-    // Return the created invoice with its items
-    const { data: fullInvoice, error: fetchError } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        customer:customers(name, email, phone),
-        invoice_items(
-          id,
-          product_id,
-          description,
-          quantity,
-          unit_price,
-          total_price
-        )
-      `)
-      .eq('id', invoice.id)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    return NextResponse.json(fullInvoice, { status: 201 });
+    return NextResponse.json(newInvoice, { status: 201 });
   } catch (error) {
     console.error('Error creating invoice:', error);
     return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 });

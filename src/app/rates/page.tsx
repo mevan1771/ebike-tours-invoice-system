@@ -14,18 +14,18 @@ interface Hotel {
   double_room_rate: number;
 }
 
+interface DailyHotel {
+  date: string;
+  hotelId: string;
+}
+
 interface Transport {
   id: string;
   name: string;
   type: string;
   capacity: number;
   rate_per_day: number;
-  description: string;
-}
-
-interface DailyHotel {
-  date: string;
-  hotelId: string;
+  description?: string;
 }
 
 // Currency conversion rates (as of a recent date)
@@ -47,19 +47,17 @@ export default function RatesPage() {
   const router = useRouter();
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [transports, setTransports] = useState<Transport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tourDates, setTourDates] = useState<string[]>([]);
   const [selectedHotels, setSelectedHotels] = useState<DailyHotel[]>([]);
+  const [transports, setTransports] = useState<Transport[]>([]);
+  const [selectedTransport, setSelectedTransport] = useState('');
+  const [transportDays, setTransportDays] = useState(1);
   const [rates, setRates] = useState({
     // Bike Rental Rates
     bikeRentalDaily: 50,
     numberOfBikes: 1,
     numberOfDays: 0,
-    
-    // Transport
-    selectedTransportId: '',
-    transportDays: 1,
     
     // Additional Services
     tourGuideRate: 200,
@@ -103,6 +101,8 @@ export default function RatesPage() {
       }
     } catch (error) {
       console.error('Error fetching hotels:', error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -115,18 +115,8 @@ export default function RatesPage() {
 
       if (error) throw error;
       setTransports(data || []);
-      
-      // Set default transport if available
-      if (data && data.length > 0) {
-        setRates(prev => ({
-          ...prev,
-          selectedTransportId: data[0].id
-        }));
-      }
     } catch (error) {
-      console.error('Error fetching transports:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching transport options:', error);
     }
   }
 
@@ -156,7 +146,7 @@ export default function RatesPage() {
 
   const generateTourDates = (startDate: Date, endDate: Date) => {
     const dates: string[] = [];
-    const currentDate = new Date(startDate);
+    let currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
       dates.push(currentDate.toISOString().split('T')[0]);
@@ -185,15 +175,6 @@ export default function RatesPage() {
     } : { single: 0, double: 0 };
   };
 
-  const getSelectedTransport = () => {
-    return transports.find(t => t.id === rates.selectedTransportId);
-  };
-
-  const calculateTransportTotal = () => {
-    const transport = getSelectedTransport();
-    return transport ? transport.rate_per_day * rates.transportDays : 0;
-  };
-
   const formatCurrency = (amount: number, skipConversion = false) => {
     const symbol = CURRENCY_SYMBOLS[selectedCurrency as keyof typeof CURRENCY_SYMBOLS];
     const convertedAmount = skipConversion ? amount : convertAmount(amount);
@@ -214,21 +195,31 @@ export default function RatesPage() {
   const calculateTotal = () => {
     const bikeTotal = rates.bikeRentalDaily * rates.numberOfBikes * rates.numberOfDays;
     const accommodationTotal = calculateAccommodationTotal();
-    const transportTotal = calculateTransportTotal();
     const servicesTotal = rates.tourGuideRate + rates.supportVehicle + rates.equipmentRental;
     const insuranceTotal = rates.insurancePerPerson * rates.numberOfBikes;
     const extrasTotal = rates.extraServices
       .filter(service => service.selected)
       .reduce((sum, service) => sum + service.rate, 0);
+    
+    // Add transport total to the calculation
+    const transportTotal = calculateTransportTotal();
 
-    return bikeTotal + accommodationTotal + transportTotal + servicesTotal + insuranceTotal + extrasTotal;
+    return bikeTotal + accommodationTotal + servicesTotal + insuranceTotal + extrasTotal + transportTotal;
+  };
+
+  const calculateTransportTotal = () => {
+    if (!selectedTransport) return 0;
+    
+    const transport = transports.find(t => t.id === selectedTransport);
+    if (!transport) return 0;
+    
+    return transport.rate_per_day * transportDays;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Rates:', rates);
     console.log('Selected Hotels:', selectedHotels);
-    console.log('Selected Transport:', getSelectedTransport());
     console.log('Total:', calculateTotal());
     router.push('/preview');
   };
@@ -323,20 +314,16 @@ export default function RatesPage() {
               Add Day
             </button>
           </div>
-          
           <div className="space-y-4">
             {selectedHotels.map((hotel, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-gray-50 p-4 rounded-lg">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Day {index + 1}: {new Date(hotel.date).toLocaleDateString()}
-                  </label>
+                <div className="text-gray-700 font-medium">
+                  Day {index + 1}: {new Date(hotel.date).toLocaleDateString()}
                 </div>
                 <div className="md:col-span-2">
                   <select
                     value={hotel.hotelId}
                     onChange={(e) => handleHotelChange(hotel.date, e.target.value)}
-                    required
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select a hotel</option>
@@ -347,15 +334,24 @@ export default function RatesPage() {
                     ))}
                   </select>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="text-sm text-gray-700">
+                    {hotel.hotelId && (
+                      <>
+                        Single: {formatCurrency(getHotelRates(hotel.hotelId).single, true)}<br />
+                        Double: {formatCurrency(getHotelRates(hotel.hotelId).double, true)}
+                      </>
+                    )}
+                  </div>
                   {selectedHotels.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeDay(index)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-red-600 hover:text-red-800 transition-colors"
+                      title="Remove day"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
                     </button>
                   )}
@@ -363,23 +359,22 @@ export default function RatesPage() {
               </div>
             ))}
           </div>
-          
-          <div className="flex justify-end text-gray-700 font-medium mt-4">
+          <div className="text-right font-semibold mt-4">
             Total Accommodation: {formatCurrency(calculateAccommodationTotal(), true)}
           </div>
         </div>
 
         {/* Bike Rental Rates */}
-        <div className="bg-white rounded-lg border p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Bike Rental Rates</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg border p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-gray-800">Bike Rental Rates</h2>
+          <div className="grid grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Daily Rate per Bike ($)
+                Daily Rate per Bike ({CURRENCY_SYMBOLS[selectedCurrency as keyof typeof CURRENCY_SYMBOLS]})
               </label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 value={rates.bikeRentalDaily}
                 onChange={(e) => setRates({...rates, bikeRentalDaily: parseFloat(e.target.value)})}
                 required
@@ -413,29 +408,25 @@ export default function RatesPage() {
               />
             </div>
           </div>
-          <div className="flex justify-end text-gray-700 font-medium mt-4">
-            Total Bike Rental: {formatCurrency(rates.bikeRentalDaily * rates.numberOfBikes * rates.numberOfDays, true)}
-          </div>
         </div>
 
-        {/* Transport Selection */}
-        <div className="bg-white rounded-lg border p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Transport Selection</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Transport Section */}
+        <div className="bg-white rounded-lg border p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-gray-800">Transport Options</h2>
+          <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Transport
               </label>
               <select
-                value={rates.selectedTransportId}
-                onChange={(e) => setRates({...rates, selectedTransportId: e.target.value})}
-                required
+                value={selectedTransport}
+                onChange={(e) => setSelectedTransport(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select transport</option>
-                {transports.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} - {t.type} (Capacity: {t.capacity}, Rate: {formatCurrency(t.rate_per_day, true)}/day)
+                <option value="">No transport needed</option>
+                {transports.map(transport => (
+                  <option key={transport.id} value={transport.id}>
+                    {transport.name} - {transport.type} ({transport.capacity} persons) - {formatCurrency(transport.rate_per_day, true)}/day
                   </option>
                 ))}
               </select>
@@ -447,38 +438,39 @@ export default function RatesPage() {
               <input
                 type="number"
                 min="1"
-                value={rates.transportDays}
-                onChange={(e) => setRates({...rates, transportDays: parseInt(e.target.value)})}
-                required
+                value={transportDays}
+                onChange={(e) => setTransportDays(parseInt(e.target.value))}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                disabled={!selectedTransport}
               />
             </div>
           </div>
-          {rates.selectedTransportId && (
+          
+          {selectedTransport && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-medium text-gray-800 mb-2">Selected Transport Details</h3>
-              {getSelectedTransport() && (
-                <div className="text-sm text-gray-700">
-                  <p><strong>Name:</strong> {getSelectedTransport()?.name}</p>
-                  <p><strong>Type:</strong> {getSelectedTransport()?.type}</p>
-                  <p><strong>Capacity:</strong> {getSelectedTransport()?.capacity} persons</p>
-                  <p><strong>Rate per Day:</strong> {formatCurrency(getSelectedTransport()?.rate_per_day || 0, true)}</p>
-                  {getSelectedTransport()?.description && (
-                    <p><strong>Description:</strong> {getSelectedTransport()?.description}</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  {transports.find(t => t.id === selectedTransport)?.name} - 
+                  {transports.find(t => t.id === selectedTransport)?.type} •
+                  Capacity: {transports.find(t => t.id === selectedTransport)?.capacity} persons
+                  {transports.find(t => t.id === selectedTransport)?.description && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      {transports.find(t => t.id === selectedTransport)?.description}
+                    </p>
                   )}
                 </div>
-              )}
+                <div className="text-lg font-semibold">
+                  Transport Total: {formatCurrency(calculateTransportTotal(), true)}
+                </div>
+              </div>
             </div>
           )}
-          <div className="flex justify-end text-gray-700 font-medium mt-4">
-            Total Transport: {formatCurrency(calculateTransportTotal(), true)}
-          </div>
         </div>
 
         {/* Additional Services */}
         <div className="bg-white rounded-lg border p-6 space-y-6">
           <h2 className="text-xl font-semibold text-gray-800">Additional Services</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tour Guide Rate

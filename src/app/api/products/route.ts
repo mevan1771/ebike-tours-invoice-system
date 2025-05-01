@@ -1,44 +1,37 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { mockAPI } from '@/lib/mockData';
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('name');
-
-    if (error) throw error;
-
-    return NextResponse.json(data || []);
+    const data = await mockAPI.getProducts();
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { name, description, model, price, stock } = body;
-
-    if (!name || !model || price === undefined || stock === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const body = await req.json();
+    
+    // Validate required fields
+    if (!body.name || !body.model || !body.price) {
+      return NextResponse.json(
+        { error: 'Name, model and price are required' }, 
+        { status: 400 }
+      );
     }
 
-    const { data, error } = await supabase
-      .from('products')
-      .insert([{ name, description, model, price, stock }])
-      .select()
-      .single();
+    const newProduct = await mockAPI.createProduct({
+      name: body.name,
+      model: body.model,
+      description: body.description || null,
+      price: typeof body.price === 'string' ? parseFloat(body.price) : body.price,
+      stock: body.stock || 0
+    });
 
-    if (error) throw error;
-
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(newProduct, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
     return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });

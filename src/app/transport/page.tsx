@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 interface Transport {
   id: string;
@@ -10,7 +10,7 @@ interface Transport {
   type: string;
   capacity: number;
   rate_per_day: number;
-  description: string;
+  description?: string;
 }
 
 export default function TransportPage() {
@@ -30,17 +30,14 @@ export default function TransportPage() {
   }, []);
 
   async function fetchTransports() {
-    console.log('Fetching transports...');
+    setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('transport')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      console.log('Fetching transports from Supabase...');
+      const { data, error } = await supabase.from('transport').select('*');
+      
       console.log('Supabase response:', { data, error });
-
+      
       if (error) {
-        console.error('Supabase error:', error);
         throw error;
       }
       
@@ -60,19 +57,24 @@ export default function TransportPage() {
     
     try {
       setIsLoading(true);
+      
+      const newTransport = {
+        name: formData.name,
+        type: formData.type,
+        capacity: parseInt(formData.capacity),
+        rate_per_day: parseFloat(formData.rate_per_day),
+        description: formData.description || null
+      };
+      
+      console.log('Inserting new transport:', newTransport);
+      
       const { data, error } = await supabase
         .from('transport')
-        .insert([{
-          name: formData.name,
-          type: formData.type,
-          capacity: parseInt(formData.capacity),
-          rate_per_day: parseFloat(formData.rate_per_day),
-          description: formData.description
-        }])
-        .select();
+        .insert([newTransport])
+        .select()
+        .single();
 
       if (error) {
-        console.error('Supabase error:', error);
         throw error;
       }
 
@@ -89,23 +91,30 @@ export default function TransportPage() {
       fetchTransports();
     } catch (error) {
       console.error('Error adding transport:', error);
-      toast.error('Failed to add transport option');
+      toast.error(error instanceof Error ? error.message : 'Failed to add transport option');
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this transport option?')) {
+      return;
+    }
+    
     try {
+      console.log('Deleting transport with ID:', id);
       const { error } = await supabase
         .from('transport')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setTransports(transports.filter(t => t.id !== id));
       toast.success('Transport option deleted successfully');
+      fetchTransports();
     } catch (error) {
       console.error('Error deleting transport:', error);
       toast.error('Failed to delete transport option');
@@ -113,11 +122,21 @@ export default function TransportPage() {
   }
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
   return (
     <main className="max-w-4xl mx-auto p-8">
+      <div className="bg-green-100 p-4 mb-6 rounded-md border border-green-300">
+        <p className="font-medium text-green-800">
+          ✅ Connected to Supabase database. Any changes will persist in the database.
+        </p>
+      </div>
+      
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Transport Management</h1>
@@ -213,7 +232,7 @@ export default function TransportPage() {
       {/* Transport List */}
       <div className="bg-white rounded-lg border">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Available Transport Options</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Available Transport Options ({transports.length})</h2>
           <div className="space-y-4">
             {transports.map(transport => (
               <div
