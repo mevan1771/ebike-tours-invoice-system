@@ -10,11 +10,18 @@ node_modules/
 # Generated files
 src/generated/
 src/generated/prisma/**
+prisma/
+**/generated/
 *.generated.*
+*.gen.*
 
 # Environment files
 .env
 .env.*
 
 # Public assets
-public/ 
+public/
+
+# Misc
+*.config.js
+next-env.d.ts 
