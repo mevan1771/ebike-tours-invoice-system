@@ -1,0 +1,20 @@
+# Build artifacts
+.next/
+out/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Generated files
+src/generated/
+src/generated/prisma/**
+*.generated.*
+
+# Environment files
+.env
+.env.*
+
+# Public assets
+public/ 
