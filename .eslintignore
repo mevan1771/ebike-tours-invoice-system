@@ -8,10 +8,14 @@ build/
 node_modules/
 
 # Generated files
-src/generated/
-src/generated/prisma/**
-prisma/
-**/generated/
+src/generated/**/*
+**/generated/**/*
+src/generated/prisma/**/*
+src/generated/prisma/runtime/library.js
+src/generated/prisma/runtime/react-native.js
+src/generated/prisma/runtime/wasm.js
+src/generated/prisma/wasm.js
+prisma/**/*
 *.generated.*
 *.gen.*
 
